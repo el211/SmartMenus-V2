@@ -1,7 +1,8 @@
 name: SmartMenus
-version: 3.2
+version: 3.4
 main: com.oreo.SmartMenus
 api-version: '1.21'
+folia-supported: true
 
 softdepend:
   - Vault

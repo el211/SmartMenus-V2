@@ -284,7 +284,7 @@
             <artifactId>oreoessentials</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>${basedir}/lib/OreoEssentials-5.3-SNAPSHOT.jar</systemPath>
+            <systemPath>${basedir}/lib/OreoEssentials-6.4b.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>com.github.retrooper</groupId>

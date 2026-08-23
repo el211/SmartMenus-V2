@@ -7,8 +7,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
-import java.lang.reflect.Method;
-import java.util.logging.Level;
+import java.lang.reflect.Field;
 
 public class DefaultItemProvider implements ItemProvider {
 
@@ -33,29 +32,34 @@ public class DefaultItemProvider implements ItemProvider {
             return;
         }
 
-        Object cs = null;
-        Object ws = null;
-        Object es = null;
+        /*
+         * Do NOT discover OreoEssentials getters via Class#getMethod/getMethods here.
+         *
+         * OreoEssentials has optional Vault types in its public method signatures. On a
+         * server without Vault, asking the JVM to enumerate/resolve those methods can throw
+         * NoClassDefFoundError for net.milkbowl.vault.economy.Economy before we ever reach
+         * getCurrencyService() or getWarpService().
+         *
+         * First prefer Bukkit's service registry. If those services are not registered,
+         * read the known OreoEssentials service fields directly. Looking up one field does
+         * not force the JVM to resolve every public method signature on the plugin class.
+         */
+        Object cs = tryBukkitService(
+                oreo,
+                "fr.elias.oreoEssentials.modules.currency.CurrencyService"
+        );
+        Object ws = tryBukkitService(
+                oreo,
+                "fr.elias.oreoEssentials.modules.warps.WarpService"
+        );
 
-        try {
-            @SuppressWarnings("unchecked")
-            Class<Object> csClass = (Class<Object>) Class.forName("fr.elias.oreoEssentials.modules.currency.CurrencyService");
-            cs = Bukkit.getServicesManager().load(csClass);
-        } catch (Throwable ignored) {}
-        try {
-            @SuppressWarnings("unchecked")
-            Class<Object> wsClass = (Class<Object>) Class.forName("fr.elias.oreoEssentials.modules.warps.WarpService");
-            ws = Bukkit.getServicesManager().load(wsClass);
-        } catch (Throwable ignored) {}
-        try {
-            @SuppressWarnings("unchecked")
-            Class<Object> esClass = (Class<Object>) Class.forName("fr.elias.oreoEssentials.modules.economy.EconomyService");
-            es = Bukkit.getServicesManager().load(esClass);
-        } catch (Throwable ignored) {}
+        if (cs == null) cs = tryField(oreo, "currencyService");
+        if (ws == null) ws = tryField(oreo, "warpService");
 
-        if (cs == null) cs = tryGetter(oreo, "getCurrencyService");
-        if (ws == null) ws = tryGetter(oreo, "getWarpService");
-        if (es == null) es = tryGetter(oreo, "getEconomyService");
+        // Economy is optional. Resolve Vault only through the Vault plugin's classloader
+        // and only when Vault is actually enabled. Missing Vault must be a normal state,
+        // not an OreoEssentials hook failure.
+        Object es = tryVaultEconomy();
 
         currencyService = cs;
         warpService = ws;
@@ -67,16 +71,51 @@ public class DefaultItemProvider implements ItemProvider {
                 + ", Economy=" + (economyService != null));
     }
 
-    private Object tryGetter(Plugin plugin, String methodName) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Object tryBukkitService(Plugin owner, String className) {
         try {
-            Method m = plugin.getClass().getMethod(methodName);
-            m.setAccessible(true);
-            return m.invoke(plugin);
-        } catch (NoSuchMethodException ignored) {
+            ClassLoader loader = owner.getClass().getClassLoader();
+            Class serviceClass = Class.forName(className, false, loader);
+            return Bukkit.getServicesManager().load(serviceClass);
+        } catch (Throwable ignored) {
             return null;
-        } catch (Throwable t) {
-            this.plugin.getLogger().log(Level.WARNING,
-                    "[SmartMenus] Failed calling " + plugin.getName() + "." + methodName + "()", t);
+        }
+    }
+
+    private Object tryField(Object target, String fieldName) {
+        Class<?> type = target.getClass();
+
+        while (type != null) {
+            try {
+                Field field = type.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return field.get(target);
+            } catch (NoSuchFieldException ignored) {
+                type = type.getSuperclass();
+            } catch (Throwable ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Object tryVaultEconomy() {
+        Plugin vault = Bukkit.getPluginManager().getPlugin("Vault");
+        if (vault == null || !vault.isEnabled()) {
+            return null;
+        }
+
+        try {
+            ClassLoader loader = vault.getClass().getClassLoader();
+            Class economyClass = Class.forName(
+                    "net.milkbowl.vault.economy.Economy",
+                    false,
+                    loader
+            );
+            return Bukkit.getServicesManager().load(economyClass);
+        } catch (Throwable ignored) {
             return null;
         }
     }

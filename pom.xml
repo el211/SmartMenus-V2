@@ -6,7 +6,7 @@
 
     <groupId>fr.oreo</groupId>
     <artifactId>SmartMenus</artifactId>
-    <version>3.4</version>
+    <version>3.5</version>
     <packaging>jar</packaging>
 
     <name>SmartMenus</name>

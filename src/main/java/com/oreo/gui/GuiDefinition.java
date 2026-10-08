@@ -7,6 +7,8 @@ import com.oreo.condition.Condition;
 import com.oreo.util.ColorUtil;
 import fr.minuskube.inv.InventoryManager;
 import fr.minuskube.inv.SmartInventory;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 
 import java.util.Collections;
@@ -165,10 +167,19 @@ public class GuiDefinition {
     public boolean isNpcBound(int checkNpcId) { return npcId != null && npcId == checkNpcId; }
 
     public SmartInventory createInventory(InventoryManager manager, SmartMenus plugin) {
+        return createInventory(manager, plugin, null);
+    }
+
+    /**
+     * Builds the inventory for {@code viewer}: the title gets {player} and PlaceholderAPI
+     * placeholders (e.g. %customizer_glyph_pack_id% for resource-pack GUI textures) resolved
+     * for that player. Without a viewer or PlaceholderAPI the title is used as written.
+     */
+    public SmartInventory createInventory(InventoryManager manager, SmartMenus plugin, Player viewer) {
         SmartInventory.Builder builder = SmartInventory.builder()
                 .id("smartmenus:" + id)
                 .provider(new GuiInventoryProvider(this, plugin, plugin.getItemProvider()))
-                .title(ColorUtil.color(title))
+                .title(ColorUtil.color(resolveTitle(viewer)))
                 .manager(manager);
 
         if (inventoryType == InventoryType.CHEST) {
@@ -178,5 +189,18 @@ public class GuiDefinition {
         }
 
         return builder.build();
+    }
+
+    private String resolveTitle(Player viewer) {
+        if (viewer == null || title == null) return title;
+        String resolved = title.replace("{player}", viewer.getName());
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            try {
+                resolved = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(viewer, resolved);
+            } catch (NoClassDefFoundError | RuntimeException ignored) {
+                // PlaceholderAPI missing or failing — keep the title as written
+            }
+        }
+        return resolved;
     }
 }

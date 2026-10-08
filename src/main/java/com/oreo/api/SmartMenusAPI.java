@@ -50,7 +50,7 @@ public final class SmartMenusAPI {
         if (def == null) return false;
         com.oreo.bedrock.BedrockManager bm = plugin.getBedrockManager();
         if (bm != null && (bm.openForBedrock(player, def) || bm.autoConvertForBedrock(player, def))) return true;
-        def.createInventory(plugin.getInventoryManager(), plugin).open(player);
+        def.createInventory(plugin.getInventoryManager(), plugin, player).open(player);
         return true;
     }
 
@@ -60,7 +60,7 @@ public final class SmartMenusAPI {
         com.oreo.gui.ArgManager.store(player.getUniqueId(), args);
         com.oreo.bedrock.BedrockManager bm = plugin.getBedrockManager();
         if (bm != null && (bm.openForBedrock(player, def) || bm.autoConvertForBedrock(player, def))) return true;
-        def.createInventory(plugin.getInventoryManager(), plugin).open(player);
+        def.createInventory(plugin.getInventoryManager(), plugin, player).open(player);
         return true;
     }
 

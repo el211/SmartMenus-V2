@@ -52,7 +52,7 @@ public final class GuiOpener {
             if (options.allowBedrockAutoConvert() && bm.autoConvertForBedrock(player, def)) return true;
         }
 
-        def.createInventory(plugin.getInventoryManager(), plugin).open(player);
+        def.createInventory(plugin.getInventoryManager(), plugin, player).open(player);
 
         // Record the open in the navigation history so the BACK action can return here.
         // Skip consecutive duplicates (e.g. a refresh re-opening the same menu).
